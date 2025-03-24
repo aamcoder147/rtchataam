@@ -26,4 +26,4 @@ def handle_disconnect():
     print("Client disconnected")
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5002)
+    app.run()
