@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-Time Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div id="messages"></div>
+        <input type="text" id="message-input" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        const socket = io.connect(window.location.origin);
+
+        // Send message on button click
+        function sendMessage() {
+            const message = document.getElementById('message-input').value;
+            socket.emit('message', message);
+            document.getElementById('message-input').value = '';
+        }
+
+        // Receive messages
+        socket.on('message', (msg) => {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML += `<div class="message">${msg}</div>`;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;  // Auto-scroll
+        });
+    </script>
+</body>
+</html>
