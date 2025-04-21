@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!-- Make it responsive -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flask Supabase Chat</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -14,7 +15,7 @@
             --white: #fff;
             --border-color: #dee2e6;
             --message-bg: #e9ecef;
-            --message-user-bg: #d1e7fd; /* Background for own messages */
+            --message-user-bg: #d1e7fd;
             --shadow-sm: 0 .125rem .25rem rgba(0,0,0,.075);
             --shadow-lg: 0 1rem 3rem rgba(0,0,0,.175);
             --border-radius: 0.375rem;
@@ -23,6 +24,10 @@
 
         *, *::before, *::after { box-sizing: border-box; }
 
+        html {
+            font-size: 16px; /* Base font size */
+        }
+
         body {
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
             margin: 0;
@@ -30,9 +35,9 @@
             color: #212529;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: center; /* Center container vertically on larger screens */
             min-height: 100vh;
-            padding: 1rem;
+            padding: 1rem; /* Add padding for desktop */
         }
 
         /* --- Chat Container --- */
@@ -41,36 +46,39 @@
             border-radius: var(--border-radius);
             box-shadow: var(--shadow-lg);
             width: 100%;
-            max-width: 700px;
+            max-width: 700px; /* Max width for desktop */
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            height: 85vh;
-            max-height: 800px;
+            /* Use viewport height, adjust for potential address bars/UI */
+            /* Consider using JavaScript for more precise dynamic height if keyboard issues arise */
+            height: 90vh;
+            max-height: 800px; /* Max height for desktop */
         }
 
         /* --- Header & Context --- */
          .chat-header {
              padding: 0.75rem 1.5rem;
-             background-color: #f0f2f5; /* Slightly different header bg */
+             background-color: #f0f2f5;
              border-bottom: 1px solid var(--border-color);
+             flex-shrink: 0; /* Prevent header from shrinking */
          }
          .chat-header h1 {
             text-align: center;
             color: var(--primary-color);
             margin: 0 0 0.5rem 0;
             font-size: 1.5rem;
-            background: none; /* Remove individual bg from h1 */
+            background: none;
             border: none;
          }
          #chat-context {
              font-size: 0.9rem;
              color: var(--secondary-color);
              text-align: center;
-             min-height: 1.2em; /* Prevent layout shift */
+             min-height: 1.2em;
          }
          #chat-context strong { color: var(--primary-color); }
-         #chat-context button { /* Back to public button */
+         #chat-context button {
              margin-left: 10px;
              font-size: 0.8rem;
              padding: 2px 6px;
@@ -84,29 +92,31 @@
          #chat-context button:hover { background-color: #5a6268; }
 
 
-        /* --- User Setup Area (Combined Prompt & Private Chat Input) --- */
+        /* --- User Setup Area --- */
         #user-setup-area {
              padding: 1rem 1.5rem;
              border-bottom: 1px solid var(--border-color);
              background-color: #f8f9fa;
+             flex-shrink: 0; /* Prevent shrinking */
         }
          #username-prompt, #private-chat-prompt {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            margin-bottom: 0.5rem; /* Space between prompts */
+            margin-bottom: 0.5rem;
         }
-         #private-chat-prompt {
-            margin-bottom: 0; /* No margin below the last item */
-         }
+         #private-chat-prompt { margin-bottom: 0; }
          #user-setup-area label {
             font-weight: 500;
-            min-width: 80px; /* Align inputs */
+            min-width: 80px;
             text-align: right;
              margin-right: 0.5rem;
+            flex-shrink: 0; /* Prevent labels from shrinking too much */
          }
          #user-setup-area input[type="text"] {
-            flex-grow: 1;
+            flex-grow: 1; /* Allow input to take space */
+             /* Prevent input from becoming too small */
+             min-width: 50px;
             padding: 0.5rem 0.75rem;
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
@@ -126,24 +136,24 @@
             cursor: pointer;
             font-size: 0.9rem;
             transition: background-color 0.2s ease;
-            white-space: nowrap;
+            white-space: nowrap; /* Prevent button text wrapping */
         }
         #user-setup-area button:hover { background-color: #0b5ed7; }
          #start-private-chat-btn { background-color: var(--secondary-color); }
          #start-private-chat-btn:hover { background-color: #5a6268; }
 
-         /* Hide private chat until username is set */
         #private-chat-prompt { display: none; }
 
 
         /* --- Chatbox Area --- */
         #chatbox {
-            flex-grow: 1;
-            overflow-y: auto;
+            flex-grow: 1; /* Key property: Take remaining space */
+            overflow-y: auto; /* Allow scrolling ONLY for messages */
             padding: 1.5rem;
             background-color: var(--white);
             display: flex;
-            flex-direction: column-reverse;
+            flex-direction: column-reverse; /* Newest messages at the bottom */
+            min-height: 100px; /* Ensure chatbox doesn't collapse completely */
         }
 
         /* --- Message Bubbles --- */
@@ -152,49 +162,33 @@
             padding: 0.6rem 1rem;
             border-radius: 1rem;
             background-color: var(--message-bg);
-            max-width: 75%;
+            max-width: 75%; /* Max width relative to chatbox */
             word-wrap: break-word;
-            align-self: flex-start; /* Default left alignment */
+            align-self: flex-start;
             opacity: 0;
             transform: translateY(10px);
             animation: fadeIn 0.3s ease forwards;
-             position: relative; /* For timestamp absolute positioning */
+             position: relative;
         }
-
-        /* Style for messages sent BY the current user */
         .message.own-message {
              background-color: var(--message-user-bg);
-             align-self: flex-end; /* Align own messages to the right */
+             align-self: flex-end;
         }
-
-        .message strong { /* Username */
+        .message strong {
             display: block;
             color: var(--primary-color);
             font-weight: 600;
             margin-bottom: 0.2rem;
              font-size: 0.9em;
         }
-        .message.own-message strong {
-             /* Optionally hide own username or style differently */
-             /* display: none; */
-             color: #0a58ca; /* Slightly darker blue */
-         }
-
-         /* Private message indicator */
-         .message .private-indicator {
-            font-size: 0.7em;
-            font-style: italic;
-            color: var(--danger-color);
-            margin-left: 5px;
-            font-weight: normal;
+        .message.own-message strong { color: #0a58ca; }
+        .message .private-indicator {
+            font-size: 0.7em; font-style: italic; color: var(--danger-color);
+            margin-left: 5px; font-weight: normal;
         }
-
         .message span { /* Timestamp */
-            display: block;
-            font-size: 0.75em;
-            color: var(--secondary-color);
-            margin-top: 0.3rem;
-            text-align: right;
+            display: block; font-size: 0.75em; color: var(--secondary-color);
+            margin-top: 0.3rem; text-align: right;
         }
 
         /* --- Message Input Form --- */
@@ -204,13 +198,13 @@
             border-top: 1px solid var(--border-color);
             background-color: #f8f9fa;
             gap: 0.5rem;
+            flex-shrink: 0; /* Prevent form from shrinking */
         }
-        #message-form.disabled {
-            opacity: 0.6;
-            pointer-events: none;
-        }
+        #message-form.disabled { opacity: 0.6; pointer-events: none; }
         #message-input {
-            flex-grow: 1;
+            flex-grow: 1; /* Take available space */
+            /* Prevent input from becoming too small */
+             min-width: 50px;
             padding: 0.6rem 1rem;
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
@@ -218,21 +212,15 @@
              resize: none;
         }
         #message-input:focus {
-             outline: none;
-             border-color: #86b7fe;
+             outline: none; border-color: #86b7fe;
              box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, .25);
          }
         #message-form button {
             padding: 0.6rem 1.2rem;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            font-size: 1rem;
-             font-weight: 500;
-            transition: background-color 0.2s ease;
-             white-space: nowrap;
+            background-color: var(--primary-color); color: white; border: none;
+            border-radius: var(--border-radius); cursor: pointer; font-size: 1rem;
+             font-weight: 500; transition: background-color 0.2s ease;
+             white-space: nowrap; /* Keep text on one line */
         }
         #message-form button:hover { background-color: #0b5ed7; }
 
@@ -243,24 +231,116 @@
         #chatbox::-webkit-scrollbar-thumb:hover { background-color: #adb5bd; }
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
         #chatbox p { text-align: center; color: var(--secondary-color); font-style: italic; width: 100%; margin-top: 2rem; }
+
+
+        /* =================================== */
+        /* --- Mobile Responsive Adjustments --- */
+        /* =================================== */
+        @media (max-width: 600px) {
+            html {
+                font-size: 15px; /* Slightly smaller base font on mobile */
+            }
+
+            body {
+                padding: 0; /* Remove body padding on mobile */
+                /* Align container to top on mobile instead of centering */
+                 align-items: flex-start;
+            }
+
+            #chat-container {
+                max-width: 100%; /* Use full width */
+                height: 100vh;   /* Use full viewport height */
+                 /* Fallback for older browsers or complex keyboard scenarios */
+                 height: -webkit-fill-available;
+                 height: fill-available;
+                max-height: none; /* Remove max height */
+                border-radius: 0; /* No rounded corners on mobile */
+                box-shadow: none; /* Remove shadow on mobile */
+            }
+
+            /* Reduce padding inside elements on mobile */
+            .chat-header,
+            #user-setup-area,
+            #chatbox,
+            #message-form {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+             .chat-header { padding-top: 0.5rem; padding-bottom: 0.5rem;}
+             #user-setup-area { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+             #message-form { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+             #chatbox { padding-top: 1rem; padding-bottom: 1rem;}
+
+            /* Adjust font sizes for smaller screens */
+            .chat-header h1 { font-size: 1.25rem; }
+            #chat-context { font-size: 0.8rem; }
+             #chat-context button { font-size: 0.75rem; padding: 1px 5px;}
+
+            /* User setup adjustments */
+            #user-setup-area label {
+                min-width: auto; /* Allow label width to shrink */
+                text-align: left;
+                margin-right: 0.3rem;
+                 font-size: 0.85rem; /* Slightly smaller label */
+            }
+             #user-setup-area input[type="text"] {
+                 font-size: 0.85rem;
+                 padding: 0.4rem 0.6rem;
+             }
+             #user-setup-area button {
+                 font-size: 0.85rem;
+                 padding: 0.4rem 0.8rem;
+             }
+
+             /* Optional: Stack setup inputs if they still overlap badly */
+             /*
+             #username-prompt, #private-chat-prompt {
+                 flex-direction: column;
+                 align-items: stretch;
+                 gap: 0.3rem;
+             }
+              #username-prompt label, #private-chat-prompt label { margin-bottom: 0.1rem; }
+              #username-prompt input, #private-chat-prompt input { width: 100%; }
+              #username-prompt button, #private-chat-prompt button { width: 100%; margin-top: 0.3rem;}
+             */
+
+
+            /* Adjust message input */
+            #message-input {
+                 font-size: 1rem; /* Keep main input readable */
+                 padding: 0.5rem 0.8rem;
+            }
+            #message-form button {
+                 font-size: 0.9rem;
+                 padding: 0.5rem 1rem;
+            }
+
+            /* Adjust message bubbles */
+            .message {
+                padding: 0.5rem 0.8rem; /* Slightly less padding */
+                max-width: 85%; /* Allow messages to be a bit wider */
+            }
+            .message strong { font-size: 0.85em; }
+            .message span { font-size: 0.7em; }
+        }
+
     </style>
 </head>
 <body>
-    <div >
+    <!-- No change needed to the div id -->
+    <div id="chat-container">
 
          <div class="chat-header">
              <h1>⚡️ Supa Real-Time Chat ⚡️</h1>
-             <div id="chat-context">Public Chat</div> <!-- Dynamic context display -->
+             <div id="chat-context">Public Chat</div>
          </div>
 
         <div id="user-setup-area">
-            <!-- Username Prompt -->
             <div id="username-prompt">
                 <label for="username-input">Username:</label>
                 <input type="text" id="username-input" placeholder="Choose a name...">
                 <button id="set-username-btn">Set</button>
             </div>
-            <!-- Private Chat Prompt (hidden initially) -->
             <div id="private-chat-prompt">
                  <label for="recipient-input">Chat with:</label>
                  <input type="text" id="recipient-input" placeholder="Enter recipient username...">
@@ -268,19 +348,17 @@
              </div>
         </div>
 
-
-        <!-- Chat messages area -->
         <div id="chatbox">
              <p>Enter username to start chatting!</p>
         </div>
 
-        <!-- Message input form (disabled initially) -->
         <form id="message-form" class="disabled">
             <input type="text" id="message-input" placeholder="Enter message..." autocomplete="off" required disabled>
             <button type="submit" disabled>Send</button>
         </form>
     </div> <!-- End of chat-container -->
 
+    <!-- The JavaScript remains exactly the same as the previous version -->
     <script>
         // --- Constants & Supabase Client ---
         const SUPABASE_URL = '{{ supabase_url }}';
@@ -354,13 +432,19 @@
 
         function displayMessage(message, isInitialLoad = false) {
              // Simple check to prevent duplicate display if realtime catches up fast during initial load
-             if (!isInitialLoad && !messagesLoaded) return;
+             if (!isInitialLoad && !messagesLoaded && chatbox.querySelector(`[data-message-id="${message.id}"]`)) {
+                 console.log("Skipping duplicate message display:", message.id);
+                 return;
+             }
+
 
             const msgElement = document.createElement('div');
             msgElement.classList.add('message');
+            // Add a data attribute to potentially help prevent duplicates
+             msgElement.dataset.messageId = message.id;
 
             const isOwnMessage = message.username === currentUsername;
-            const isPrivate = message.recipient_username !== null; // Check if it's a private message
+            const isPrivate = message.recipient_username !== null;
 
             if (isOwnMessage) {
                 msgElement.classList.add('own-message');
@@ -371,18 +455,16 @@
 
             let privateIndicatorHTML = '';
             if (isPrivate) {
-                 // Indicate who the private message is *to* or *from* if not the current chat partner
-                 if (isOwnMessage && message.recipient_username !== currentChatContext) {
-                    privateIndicatorHTML = `<span class="private-indicator">(to ${message.recipient_username})</span>`;
-                 } else if (!isOwnMessage && message.username !== currentChatContext) {
-                    // This case should technically be filtered out by fetch/realtime logic
-                    // but kept for robustness / potential cross-private-chat scenarios later
-                    // privateIndicatorHTML = `<span class="private-indicator">(from ${message.username})</span>`;
-                 } else if (currentChatContext === PUBLIC_CHAT_CONTEXT){
-                      // If viewing public chat, but seeing own private messages
-                      if(isOwnMessage) privateIndicatorHTML = `<span class="private-indicator">(Private to ${message.recipient_username})</span>`;
-                      // If viewing public chat, received a private message (shouldn't happen with proper filtering/RLS)
-                      // else privateIndicatorHTML = `<span class="private-indicator">(Private from ${message.username})</span>`;
+                 if (isOwnMessage && message.recipient_username !== currentChatContext && currentChatContext === PUBLIC_CHAT_CONTEXT) {
+                    privateIndicatorHTML = `<span class="private-indicator">(Private to ${message.recipient_username})</span>`;
+                 } else if (!isOwnMessage && isPrivate && currentChatContext === PUBLIC_CHAT_CONTEXT){
+                     // This case = Received a private message while viewing public. Filtered out by Realtime, but keep logic just in case.
+                      // We actually don't display these in public view, so indicator not needed here
+                 } else if (isOwnMessage && message.recipient_username !== currentChatContext){
+                     // Sending private message, but currently viewing *another* private chat or public? (Edge case)
+                     privateIndicatorHTML = `<span class="private-indicator">(to ${message.recipient_username})</span>`;
+                 } else if (!isOwnMessage && message.username !== currentChatContext){
+                     // Receiving message from someone else in a private chat context - should match context, filtered by Realtime
                  }
              }
 
@@ -394,7 +476,6 @@
             `;
             chatbox.prepend(msgElement);
 
-            // Clear initial prompt if it exists
              clearInitialPrompt();
         }
 
@@ -416,10 +497,8 @@
                 .limit(100); // Load more messages potentially
 
             if (currentChatContext === PUBLIC_CHAT_CONTEXT) {
-                // Fetch only public messages
                 query = query.is('recipient_username', null);
             } else {
-                // Fetch private messages between currentUsername and currentChatContext
                 query = query.or(`and(username.eq.${currentUsername},recipient_username.eq.${currentChatContext}),and(username.eq.${currentChatContext},recipient_username.eq.${currentUsername})`);
             }
 
@@ -432,11 +511,13 @@
                 chatbox.innerHTML = `<p style="color: red;">Error loading messages: ${error.message}</p>`;
                  disableChatInput("Cannot load messages");
             } else if (messages && messages.length > 0) {
-                 messages.forEach(msg => displayMessage(msg, true)); // Pass true for initial load
+                 messages.forEach(msg => displayMessage(msg, true));
              } else {
                  chatbox.innerHTML = '<p>No messages in this chat yet.</p>';
             }
-             messagesLoaded = true; // Set flag after initial load
+             messagesLoaded = true; // Set flag after initial load is rendered
+             // Re-enable chat input after messages are potentially loaded (or error/no messages shown)
+             if (currentUsername) enableChatInput();
         }
 
         async function sendMessage(event) {
@@ -445,15 +526,15 @@
 
             if (!messageText || !currentUsername) return;
 
-            const recipient = currentChatContext; // This is null for public chat
+            const recipient = currentChatContext;
             const messageData = {
                  username: currentUsername,
                  content: messageText,
-                 recipient_username: recipient // Will be null if currentChatContext is null
+                 recipient_username: recipient
             };
 
             const tempInputValue = messageInput.value;
-            messageInput.value = ''; // Clear optimistically
+            messageInput.value = '';
 
              try {
                 const { error } = await supabaseClient.from('messages').insert([messageData]);
@@ -462,7 +543,6 @@
                      alert(`Failed to send message: ${error.message}`);
                      messageInput.value = tempInputValue; // Restore on error
                  }
-                 // Success: Realtime listener will handle display
              } catch (err) {
                  console.error('Network/DB error sending message:', err);
                  alert('An error occurred sending the message.');
@@ -471,59 +551,33 @@
         }
 
          function setupRealtime() {
-            // Ensure only one channel exists
             if (realtimeChannel) {
                 supabaseClient.removeChannel(realtimeChannel)
-                   .catch(err => console.warn("Error removing previous channel (might be normal on fast switch):", err));
-                realtimeChannel = null; // Reset variable
+                   .catch(err => console.warn("Error removing previous channel:", err));
+                realtimeChannel = null;
                  console.log('Previous realtime channel removed.');
             }
 
              console.log(`Setting up realtime listener for: User=${currentUsername}, Context=${currentChatContext || 'Public'}`);
 
-            // Unique channel name per user might be better in complex scenarios, but 'public:messages' works if filtered client-side correctly.
              realtimeChannel = supabaseClient
-                 .channel(`realtime_chat_${currentUsername}`) // Channel name more specific
+                 .channel(`realtime_chat_${currentUsername}_${Date.now()}`) // Ensure unique channel name per connection instance
                  .on(
                      'postgres_changes',
-                      // Listen for *all* inserts initially. We filter client-side below.
-                      // Server-side filtering here is more complex with OR conditions needed for private chats.
                      { event: 'INSERT', schema: 'public', table: 'messages'},
                      (payload) => {
+                          // Add a check using the data-attribute to prevent double display from fetch + realtime race condition
+                          if (chatbox.querySelector(`[data-message-id="${payload.new.id}"]`)) {
+                               console.log("Realtime message already displayed (likely from initial fetch):", payload.new.id);
+                               return;
+                          }
+
+                         // If messages haven't finished loading, wait briefly
                          if (!messagesLoaded) {
-                             console.log("Realtime message received before initial load complete, skipping display:", payload.new.id);
-                             return; // Avoid race conditions / duplicates
-                         }
-
-                         const newMessage = payload.new;
-                         console.log('Realtime message received:', newMessage);
-
-                         const isPublic = newMessage.recipient_username === null;
-                         const sentByMe = newMessage.username === currentUsername;
-                         const sentToMe = newMessage.recipient_username === currentUsername;
-                         const relevantToCurrentPrivateChat =
-                                currentChatContext !== PUBLIC_CHAT_CONTEXT &&
-                                ( (sentByMe && newMessage.recipient_username === currentChatContext) || // I sent it to current partner
-                                  (sentToMe && newMessage.username === currentChatContext) );           // Current partner sent it to me
-
-
-                         // Display Logic based on current view context:
-                         if (currentChatContext === PUBLIC_CHAT_CONTEXT) {
-                              // In public view, only show public messages
-                              if(isPublic) {
-                                 console.log("Displaying public message in public view");
-                                 displayMessage(newMessage);
-                              } else {
-                                  console.log("Ignoring private message while in public view");
-                              }
+                             console.log("Realtime message received before initial load marked complete, delaying slightly...");
+                             setTimeout(() => processRealtimeMessage(payload), 200);
                          } else {
-                             // In private view (e.g., chatting with 'Alice')
-                             if (relevantToCurrentPrivateChat) {
-                                 console.log("Displaying message relevant to private chat view");
-                                 displayMessage(newMessage);
-                             } else {
-                                  console.log("Ignoring message not relevant to current private chat view");
-                             }
+                             processRealtimeMessage(payload);
                          }
                      }
                  )
@@ -531,7 +585,8 @@
                      console.log(`Realtime channel subscription status: ${status}`);
                      if (status === 'SUBSCRIBED') {
                          console.log(`Connected to realtime channel for context: ${currentChatContext || 'Public'}`);
-                         enableChatInput(); // Re-enable input on successful connection/reconnection
+                          // Don't enable chat input here IF messages haven't loaded yet.
+                          if (messagesLoaded && currentUsername) enableChatInput();
                      } else if (status === 'CHANNEL_ERROR') {
                          console.error('Realtime channel error:', err);
                          alert(`Realtime connection error: ${err?.message || 'Unknown'}. Refresh?`);
@@ -539,37 +594,61 @@
                      } else if (status === 'TIMED_OUT') {
                          console.warn('Realtime connection timed out.');
                           disableChatInput("Realtime connection timed out");
-                         // Optional: Implement retry logic here
                      } else if (status === 'CLOSED'){
                          console.log('Realtime channel closed.');
                           disableChatInput("Realtime connection closed");
-                          // Maybe attempt reconnect or prompt user
                      }
                  });
-                 console.log("Subscribing...")
+                 console.log("Subscribing...");
          }
+
+        // Helper function to process incoming realtime message
+        function processRealtimeMessage(payload){
+             const newMessage = payload.new;
+             console.log('Processing Realtime message:', newMessage);
+
+             const isPublic = newMessage.recipient_username === null;
+             const sentByMe = newMessage.username === currentUsername;
+             const sentToMe = newMessage.recipient_username === currentUsername;
+             const relevantToCurrentPrivateChat =
+                    currentChatContext !== PUBLIC_CHAT_CONTEXT &&
+                    ( (sentByMe && newMessage.recipient_username === currentChatContext) ||
+                      (sentToMe && newMessage.username === currentChatContext) );
+
+             if (currentChatContext === PUBLIC_CHAT_CONTEXT) {
+                  if(isPublic) {
+                     console.log("Displaying public message in public view");
+                     displayMessage(newMessage);
+                  } else {
+                     console.log("Ignoring private message while in public view");
+                      // Optionally, add a notification indicator elsewhere if desired
+                  }
+             } else {
+                 if (relevantToCurrentPrivateChat) {
+                     console.log("Displaying message relevant to private chat view");
+                     displayMessage(newMessage);
+                 } else {
+                      console.log("Ignoring message not relevant to current private chat view");
+                      // Optionally, notify user they have message from someone else
+                 }
+             }
+        }
+
 
         // --- Context Switching Functions ---
 
         function startPrivateChat() {
             const recipient = recipientInput.value.trim();
-            if (!recipient) {
-                alert('Please enter a username to chat with.');
-                return;
-            }
-            if (recipient === currentUsername) {
-                alert("You can't start a private chat with yourself!");
-                return;
-            }
+            if (!recipient) { alert('Please enter a username to chat with.'); return; }
+            if (recipient === currentUsername) { alert("You can't start a private chat with yourself!"); return; }
 
             console.log(`Starting private chat with: ${recipient}`);
-            currentChatContext = recipient; // Set the context
-             recipientInput.value = ''; // Clear input after starting
-             updateChatContextUI();       // Update the header display
+            currentChatContext = recipient;
+             recipientInput.value = '';
+             updateChatContextUI();
              disableChatInput("Loading private chat..."); // Disable while loading
-            fetchMessages();          // Fetch messages for the new private context
-             setupRealtime();          // Resubscribe with potentially new filters needed (handled by client filtering)
-             // Input will be re-enabled by the realtime 'SUBSCRIBED' status or fetch success
+             fetchMessages(); // fetch will re-enable input via messagesLoaded check OR explicit enable
+             setupRealtime();
         }
 
         function switchToPublicChat() {
@@ -577,9 +656,8 @@
             currentChatContext = PUBLIC_CHAT_CONTEXT;
              updateChatContextUI();
              disableChatInput("Loading public chat...");
-            fetchMessages();
+             fetchMessages();
              setupRealtime();
-             // Input will be re-enabled by the realtime 'SUBSCRIBED' status or fetch success
         }
 
 
@@ -590,13 +668,13 @@
              if (name) {
                  currentUsername = name;
                  localStorage.setItem('chat_username', currentUsername);
-                 usernamePrompt.style.display = 'none';     // Hide username prompt
-                 privateChatPrompt.style.display = 'flex'; // Show private chat input
-                 recipientInput.focus();                    // Focus recipient input
-                 updateChatContextUI(); // Ensure header reflects public chat initially
-                 disableChatInput("Loading public chat..."); // Disable until loaded
-                 fetchMessages();       // Load initial public messages
-                 setupRealtime();       // Connect to realtime
+                 usernamePrompt.style.display = 'none';
+                 privateChatPrompt.style.display = 'flex';
+                 recipientInput.focus();
+                 updateChatContextUI();
+                 disableChatInput("Loading public chat...");
+                 fetchMessages();
+                 setupRealtime();
              } else {
                  alert('Please enter a valid username.');
              }
@@ -611,20 +689,19 @@
         messageForm.addEventListener('submit', sendMessage);
 
          function initializeChat() {
-             updateChatContextUI(); // Set initial "Public Chat" text
+             updateChatContextUI();
              if (currentUsername) {
                  usernameInput.value = currentUsername;
-                 usernamePrompt.style.display = 'none'; // Hide username prompt
-                 privateChatPrompt.style.display = 'flex';// Show private chat input
-                 disableChatInput("Loading public chat..."); // Disable input initially
-                 fetchMessages();
+                 usernamePrompt.style.display = 'none';
+                 privateChatPrompt.style.display = 'flex';
+                 disableChatInput("Loading public chat...");
+                 fetchMessages(); // Fetch messages for the default context (public)
                  setupRealtime();
              } else {
-                 // Show username prompt, hide private chat, disable form
                  usernamePrompt.style.display = 'flex';
                  privateChatPrompt.style.display = 'none';
-                 disableChatInput("Set username to chat"); // Inform user
-                 chatbox.innerHTML = '<p>Please enter a username to start chatting.</p>'; // Reset chatbox
+                 disableChatInput("Set username to chat");
+                 chatbox.innerHTML = '<p>Please enter a username to start chatting.</p>';
                  usernameInput.focus();
             }
         }
