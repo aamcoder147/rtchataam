@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Supabase Chat</title>
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
+        h1 { text-align: center; color: #333; }
+        #chatbox {
+            height: 400px;
+            width: 95%;
+            max-width: 600px;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            padding: 10px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column-reverse; /* Newest messages at the bottom */
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            background-color: #e9e9e9;
+            max-width: 80%;
+            word-wrap: break-word; /* Handle long words */
+        }
+        .message strong { color: #007bff; }
+        .message span { display: block; font-size: 0.8em; color: #666; margin-top: 3px; }
+        #message-form {
+            display: flex;
+            width: 95%;
+            max-width: 600px;
+            margin: 10px auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #message-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-right: none;
+            border-radius: 3px 0 0 3px;
+        }
+        #message-form button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 0 3px 3px 0;
+            transition: background-color 0.2s ease;
+        }
+        #message-form button:hover { background-color: #0056b3; }
+        #username-prompt {
+             text-align: center; margin-bottom: 15px;
+        }
+         #username-prompt input { padding: 5px; margin-left: 5px;}
+         #username-prompt button { padding: 5px 10px; margin-left: 5px; cursor: pointer;}
+
+    </style>
+</head>
+<body>
+
+    <h1>Real-Time Chat</h1>
+
+    <div id="username-prompt">
+        <label for="username-input">Enter Username:</label>
+        <input type="text" id="username-input">
+        <button id="set-username-btn">Set</button>
+    </div>
+
+    <div id="chatbox">
+        <!-- Messages will appear here -->
+    </div>
+
+    <form id="message-form" style="display: none;"> <!-- Initially hidden -->
+        <input type="text" id="message-input" placeholder="Enter message..." autocomplete="off" required>
+        <button type="submit">Send</button>
+    </form>
+
+    <script>
+        // Get Supabase credentials passed from Flask backend
+        const SUPABASE_URL = '{{ supabase_url }}';
+        const SUPABASE_KEY = '{{ supabase_key }}';
+
+        if (!SUPABASE_URL || !SUPABASE_KEY) {
+            alert('Error: Supabase credentials not found!');
+            // Handle error appropriately, maybe disable chat
+        }
+
+        // Initialize Supabase client
+        const { createClient } = supabase; // Get createClient from the global Supabase object
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- DOM Elements ---
+        const chatbox = document.getElementById('chatbox');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const usernamePrompt = document.getElementById('username-prompt');
+        const usernameInput = document.getElementById('username-input');
+        const setUsernameBtn = document.getElementById('set-username-btn');
+
+        let currentUsername = localStorage.getItem('chat_username') || ''; // Persist username locally
+        let realtimeChannel = null;
+
+        // --- Functions ---
+
+        // Function to display a single message
+        function displayMessage(message) {
+            const msgElement = document.createElement('div');
+            msgElement.classList.add('message');
+
+            const date = new Date(message.created_at);
+            const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            msgElement.innerHTML = `
+                <strong>${message.username || 'Anon'}:</strong> ${message.content}
+                <span>${timeString}</span>
+            `;
+            // Prepend new messages to the top if using normal flexbox order
+            // Append if using flex-direction: column-reverse;
+            chatbox.prepend(msgElement); // Use prepend so new messages appear right below input
+        }
+
+        // Function to fetch initial messages
+        async function fetchMessages() {
+            chatbox.innerHTML = '<p>Loading messages...</p>'; // Indicate loading
+            const { data: messages, error } = await supabaseClient
+                .from('messages')
+                .select('*')
+                .order('created_at', { ascending: false }) // Get newest first
+                .limit(50); // Limit initial load
+
+            chatbox.innerHTML = ''; // Clear loading message
+            if (error) {
+                console.error('Error fetching messages:', error);
+                chatbox.innerHTML = '<p style="color: red;">Error loading messages.</p>';
+            } else if (messages) {
+                messages.forEach(displayMessage); // Display fetched messages
+            } else {
+                 chatbox.innerHTML = '<p>No messages yet. Be the first!</p>';
+            }
+        }
+
+        // Function to send a message
+        async function sendMessage(event) {
+            event.preventDefault(); // Prevent form page reload
+            const messageText = messageInput.value.trim();
+
+            if (!messageText || !currentUsername) {
+                alert('Please set a username and enter a message.');
+                return; // Don't send empty messages or without username
+            }
+
+            // Clear input immediately for better UX
+            messageInput.value = '';
+
+            const { error } = await supabaseClient
+                .from('messages')
+                .insert([{
+                    username: currentUsername,
+                    content: messageText
+                }]);
+
+            if (error) {
+                console.error('Error sending message:', error);
+                alert('Failed to send message. Check console.');
+                // Optionally put the text back in the input?
+                messageInput.value = messageText;
+            }
+            // No need to call displayMessage here, the realtime listener will handle it
+        }
+
+        // Function to setup real-time subscription
+        function setupRealtime() {
+            // Unsubscribe from previous channel if exists (e.g., if user changed username - not implemented here)
+            if (realtimeChannel) {
+                supabaseClient.removeChannel(realtimeChannel);
+            }
+
+            // Subscribe to new message inserts
+            realtimeChannel = supabaseClient
+                .channel('public:messages') // Unique channel name
+                .on(
+                    'postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'messages' },
+                    (payload) => {
+                        console.log('New message received!', payload);
+                        displayMessage(payload.new); // Display the new message
+                        // Optional: scroll to bottom if not using flex-reverse
+                        // chatbox.scrollTop = chatbox.scrollHeight;
+                    }
+                )
+                .subscribe((status, err) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log('Connected to realtime channel!');
+                    } else if (status === 'CHANNEL_ERROR') {
+                         console.error('Realtime channel error:', err);
+                         alert('Realtime connection error. Refresh may be needed.');
+                    } else if (status === 'TIMED_OUT') {
+                        console.warn('Realtime connection timed out.');
+                        alert('Realtime connection timed out. Please refresh.');
+                    }
+                 });
+
+             console.log('Subscribing to realtime channel...');
+        }
+
+        // --- Event Listeners & Initialisation ---
+
+        // Set username
+        function handleSetUsername() {
+             const name = usernameInput.value.trim();
+             if (name) {
+                 currentUsername = name;
+                 localStorage.setItem('chat_username', currentUsername); // Save it
+                 usernamePrompt.style.display = 'none'; // Hide prompt
+                 messageForm.style.display = 'flex'; // Show message form
+                 messageInput.focus(); // Focus input field
+                 fetchMessages(); // Load messages now that we have a username context (though not strictly needed here)
+                 setupRealtime(); // Connect to realtime ONLY after setting username
+             } else {
+                 alert('Please enter a valid username.');
+             }
+         }
+
+        setUsernameBtn.addEventListener('click', handleSetUsername);
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleSetUsername();
+            }
+        });
+
+        // Send message on form submit
+        messageForm.addEventListener('submit', sendMessage);
+
+        // Initial setup when page loads
+        function initializeChat() {
+            if (currentUsername) {
+                // User already has a username stored
+                usernameInput.value = currentUsername; // Pre-fill input for confirmation (optional)
+                handleSetUsername(); // Directly proceed to chat setup
+            } else {
+                // Show username prompt
+                usernamePrompt.style.display = 'block';
+                messageForm.style.display = 'none';
+                usernameInput.focus();
+            }
+        }
+
+        // Start the application logic once the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', initializeChat);
+
+        // Clean up the channel subscription when the user leaves the page
+        window.addEventListener('beforeunload', () => {
+            if (realtimeChannel) {
+                supabaseClient.removeChannel(realtimeChannel);
+                console.log("Removed Supabase channel.");
+            }
+        });
+
+    </script>
+
+</body>
+</html>

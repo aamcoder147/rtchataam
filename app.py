@@ -1,29 +1,30 @@
+import os
 from flask import Flask, render_template
-from flask_socketio import SocketIO, send
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key'
-socketio = SocketIO(app, cors_allowed_origins="*")  # Allow all origins for testing
 
-# Store connected users (optional)
-users = {}
+# Get Supabase credentials from environment variables
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("Supabase URL and Key must be set in the .env file")
 
 @app.route('/')
-def home():
-    return render_template('chat.html')
-
-@socketio.on('message')
-def handle_message(message):
-    print(f"Received message: {message}")
-    send(message, broadcast=True)  # Broadcast to all clients
-
-@socketio.on('connect')
-def handle_connect():
-    print("Client connected")
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    print("Client disconnected")
+def index():
+    """Serves the main HTML page."""
+    # Pass Supabase credentials to the template
+    return render_template(
+        'index.html',
+        supabase_url=SUPABASE_URL,
+        supabase_key=SUPABASE_KEY
+    )
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0')  # Use SocketIO's server
+    # Use debug=True for development (auto-reloads)
+    # Use host='0.0.0.0' to make it accessible on your network
+    app.run(debug=True, host='0.0.0.0', port=5000)
